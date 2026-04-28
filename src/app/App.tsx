@@ -18,6 +18,7 @@ import { CompletedScreen } from './components/CompletedScreen';
 import { NoMatchCard } from './components/NoMatchCard';
 import { appReducer, initialState } from '@/store/appReducer';
 import { findBestLoad } from '@/services/matchingService';
+import { soundService } from '@/services/soundService';
 import { MOCK_DRIVER } from '@/data/mockLoads';
 
 type ModalScreen = 'profile' | 'vehicle' | 'history' | null;
@@ -48,6 +49,7 @@ export default function App() {
     const timer = setTimeout(() => {
       const load = findBestLoad(MOCK_DRIVER, rejectedIds);
       if (load) {
+        soundService.playNewLoad();
         dispatch({ type: 'MATCH_FOUND', load, rejectedIds });
       } else {
         dispatch({ type: 'NO_MATCH_FOUND' });
@@ -69,8 +71,10 @@ export default function App() {
           description: 'Buscando otra carga disponible en tu ruta...',
           duration: 3500,
         });
+        soundService.playError();
         dispatch({ type: 'LOAD_TAKEN' });
       } else {
+        soundService.playSuccess();
         dispatch({ type: 'CONFIRM_ACCEPT' });
       }
     }, 1500);

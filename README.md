@@ -1,4 +1,4 @@
-# 🚛 CargoBack — Full Stack Logistics Platform
+# 🚛 CargoBack — Full Stack Real-Time Logistics Platform
 
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![React Native](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
@@ -25,7 +25,20 @@
 - 🗺️ **GPS Tracking**: Automatic background location tracking (8-sec intervals, battery-optimized)
 - 🚛 **Active Trip Management**: Real-time route display with destination markers
 - 💬 **Instant Chat**: Quick-reply buttons for common messages
-- 📦 **Load Discovery**: Search available cargo with map preview
+- 📦 **Smart Load Selection**: 
+  - Browse 3-5 auto-ranked loads
+  - Ranking by efficiency ($/km) + client rating
+  - Accept/reject with one tap
+  - Recommended badge on best load
+- 🔔 **Sound Notifications**: 
+  - Alert when new loads arrive
+  - Success sound on acceptance
+  - Error sound on failures
+- 📊 **Load History Dashboard**:
+  - Track all accepted/rejected loads
+  - Acceptance rate, total earnings
+  - Persistent local storage
+  - Timeline view with stats
 - ⭐ **Rating System**: Driver stats and performance metrics
 
 ### Real-Time Sync
@@ -114,10 +127,30 @@ npx expo start
 # Press 'a' for Android emulator
 ```
 
-### Usage Flow
-1. **Home Tab**: Browse available cargo loads on map
-2. **Trip Tab**: Start trip to enable location tracking
-3. **Profile Tab**: View/edit driver info and vehicle details
+### Navigation (4 Tabs)
+1. **🔍 Home Tab**: Smart load selection with auto-ranking
+   - See 3-5 recommended loads
+   - Tap to accept or reject
+   - Integrated chat with clients
+   - Auto-sound notifications
+
+2. **🚗 Trip Tab**: Active trip management
+   - Real-time GPS tracking (background)
+   - Live chat with customer
+   - Route visualization on map
+   - Trip completion controls
+
+3. **📊 History Tab** (NEW): Load decision history
+   - View all accepted/rejected loads
+   - See acceptance rate & earnings
+   - Timeline with timestamps
+   - Clear persistent storage
+
+4. **👤 Profile Tab**: Driver management
+   - Edit name and phone
+   - Register/update vehicle
+   - View vehicle details
+   - Logout
 
 ---
 
@@ -216,6 +249,39 @@ Truck information
   isRefrigerated: boolean
 }
 ```
+
+---
+
+## 🎯 Load Ranking System
+
+**How Loads Are Suggested:**
+
+```
+1. Filter available loads by driver's vehicle:
+   - Capacity must fit cargo
+   - Refrigeration (if required)
+   - Pickup time within next 4 hours
+
+2. Rank by efficiency score:
+   efficiency = pricePerKm / (distanceKm + detourKm)
+   
+3. Secondary sort: Client rating (higher = better)
+
+4. Display: Top 5 loads, first one labeled "Recomendado"
+```
+
+**Example:**
+```
+Carga A: $1.8M ÷ 200km = $9,000/km ⭐4.8 → #1 (RECOMENDADO)
+Carga B: $2.1M ÷ 475km = $4,421/km ⭐4.5 → #2
+Carga C: $1.5M ÷ 485km = $3,093/km ⭐4.2 → #3
+```
+
+**When you reject a load:**
+- It's removed from your list
+- If < 2 loads remain, auto-loads new ones
+- All re-ranked instantly
+- Old rejected loads won't show again (today)
 
 ---
 

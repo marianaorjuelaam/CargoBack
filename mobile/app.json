@@ -25,7 +25,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow CargoBack to access your location"
         }
-      ]
+      ],
+      "expo-av"
     ]
   }
 }

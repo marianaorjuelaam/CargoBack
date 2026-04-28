@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import HomeScreen from './screens/HomeScreen';
 import ActiveTripScreen from './screens/ActiveTripScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import LoadHistoryScreen from './screens/LoadHistoryScreen';
 import { useAuthStore } from './store/authStore';
+import { cleanup as cleanupAudio } from './services/notificationService';
 
 const Tab = createBottomTabNavigator();
 
@@ -15,8 +17,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simular carga inicial
     setTimeout(() => setIsLoading(false), 500);
+    return () => {
+      cleanupAudio();
+    };
   }, []);
 
   if (isLoading) {
@@ -52,25 +56,28 @@ export default function App() {
             height: 60,
           },
           tabBarIcon: ({ color, size }) => {
-            let iconName: keyof typeof Ionicons.glyphMap = 'home';
-
-            if (route.name === 'Home') iconName = 'map';
-            else if (route.name === 'Trip') iconName = 'navigate';
-            else if (route.name === 'Profile') iconName = 'person';
-
-            return <Ionicons name={iconName} size={size} color={color} />;
+            if (route.name === 'Home') return <MaterialIcons name="search" size={size} color={color} />;
+            if (route.name === 'Trip') return <Ionicons name="navigate" size={size} color={color} />;
+            if (route.name === 'History') return <MaterialIcons name="history" size={size} color={color} />;
+            if (route.name === 'Profile') return <Ionicons name="person" size={size} color={color} />;
+            return <Ionicons name="home" size={size} color={color} />;
           },
         })}
       >
         <Tab.Screen
           name="Home"
           component={HomeScreen}
-          options={{ tabBarLabel: 'Buscar', tabBarActiveTintColor: '#10b981' }}
+          options={{ tabBarLabel: 'Buscar' }}
         />
         <Tab.Screen
           name="Trip"
           component={ActiveTripScreen}
           options={{ tabBarLabel: 'Viaje' }}
+        />
+        <Tab.Screen
+          name="History"
+          component={LoadHistoryScreen}
+          options={{ tabBarLabel: 'Historial' }}
         />
         <Tab.Screen
           name="Profile"
