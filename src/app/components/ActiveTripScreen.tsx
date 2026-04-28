@@ -1,18 +1,44 @@
 import { MapPin, Navigation } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { GoogleMapView } from './GoogleMapView';
 import type { Load } from '@/domain/types';
 import { formatCOP } from '@/utils/formatters';
+import { subscribeToDrivingRoute, type DriverLocation } from '@/services/trackingService';
 
 interface ActiveTripScreenProps {
   load: Load;
+  driverId?: string;
+  tripId?: string;
   onComplete: () => void;
 }
 
-export function ActiveTripScreen({ load, onComplete }: ActiveTripScreenProps) {
+export function ActiveTripScreen({ load, driverId, tripId, onComplete }: ActiveTripScreenProps) {
+  const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
+  const [routeHistory, setRouteHistory] = useState<DriverLocation[]>([]);
+
+  useEffect(() => {
+    if (!tripId) return;
+
+    const unsubscribe = subscribeToDrivingRoute(tripId, (locations) => {
+      setRouteHistory(locations);
+      if (locations.length > 0) {
+        const latest = locations[locations.length - 1];
+        setDriverLocation(latest);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [tripId]);
+
   return (
     <div className="h-full flex flex-col relative">
-      {/* Real map showing the active route */}
-      <GoogleMapView driverCity={load.origin} destCity={load.destination} />
+      {/* Real map showing the active route with live driver position */}
+      <GoogleMapView
+        driverCity={load.origin}
+        destCity={load.destination}
+        liveLocation={driverLocation}
+        routeHistory={routeHistory}
+      />
 
       {/* Content overlay — z-10 sits above Leaflet's stacking context */}
       <div className="relative z-10 flex-1 flex flex-col">

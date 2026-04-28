@@ -1,10 +1,23 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsRenderer, Marker, Polyline } from '@react-google-maps/api';
 import { CITY_COORDS } from '@/services/matchingService';
+import { MapBackground } from './MapBackground';
+
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
 interface GoogleMapViewProps {
   driverCity: string;
   destCity?: string;
+  liveLocation?: {
+    lat: number;
+    lng: number;
+    heading?: number;
+    speed?: number;
+  } | null;
+  routeHistory?: Array<{
+    lat: number;
+    lng: number;
+  }>;
 }
 
 const DARK_MAP_STYLES = [
@@ -39,10 +52,18 @@ const DEST_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
   '</svg>'
 )}`;
 
-export function GoogleMapView({ driverCity, destCity }: GoogleMapViewProps) {
+const LIVE_DRIVER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">' +
+  '<circle cx="16" cy="16" r="12" fill="#10b981" opacity="0.25"/>' +
+  '<circle cx="16" cy="16" r="6" fill="#10b981" stroke="#059669" stroke-width="2.5"/>' +
+  '<circle cx="16" cy="16" r="2" fill="white"/>' +
+  '</svg>'
+)}`;
+
+export function GoogleMapView({ driverCity, destCity, liveLocation, routeHistory }: GoogleMapViewProps) {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '',
+    googleMapsApiKey: API_KEY,
   });
 
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -108,6 +129,10 @@ export function GoogleMapView({ driverCity, destCity }: GoogleMapViewProps) {
       map.setZoom(7);
     }
   }, [directions, isLoaded, driverCity, destCity]);
+
+  if (!API_KEY) {
+    return <MapBackground showRoute={!!destCity} />;
+  }
 
   if (!isLoaded) {
     return (
@@ -195,6 +220,39 @@ export function GoogleMapView({ driverCity, destCity }: GoogleMapViewProps) {
               strokeColor: '#10b981',
               strokeWeight: 2.5,
               strokeOpacity: 0.75,
+            }}
+          />
+        )}
+
+        {/* Live driver location (real-time from mobile) */}
+        {liveLocation && (
+          <>
+            <Marker
+              position={{ lat: liveLocation.lat, lng: liveLocation.lng }}
+              icon={{
+                url: LIVE_DRIVER_SVG,
+                scaledSize: new window.google.maps.Size(32, 32),
+                anchor: new window.google.maps.Point(16, 16),
+                rotation: liveLocation.heading || 0,
+              }}
+              zIndex={20}
+              title="Posición actual del conductor"
+            />
+          </>
+        )}
+
+        {/* Driver route history trail */}
+        {routeHistory && routeHistory.length > 1 && (
+          <Polyline
+            path={routeHistory.map((loc) => ({
+              lat: loc.lat,
+              lng: loc.lng,
+            }))}
+            options={{
+              strokeColor: '#3b82f6',
+              strokeWeight: 2,
+              strokeOpacity: 0.6,
+              geodesic: true,
             }}
           />
         )}

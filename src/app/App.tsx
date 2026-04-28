@@ -1,6 +1,12 @@
-import { useReducer, useEffect } from 'react';
+import { useReducer, useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { toast } from 'sonner';
+import { Toaster, toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
+import { AuthLayout } from './screens/auth/AuthLayout';
+import { ProfileScreen } from './screens/ProfileScreen';
+import { VehicleScreen } from './screens/VehicleScreen';
+import { TripHistoryScreen } from './screens/TripHistoryScreen';
+import { SideDrawer } from './components/SideDrawer';
 import { Header } from './components/Header';
 import { GoogleMapView } from './components/GoogleMapView';
 import { IdleCard } from './components/IdleCard';
@@ -14,13 +20,27 @@ import { appReducer, initialState } from '@/store/appReducer';
 import { findBestLoad } from '@/services/matchingService';
 import { MOCK_DRIVER } from '@/data/mockLoads';
 
+type ModalScreen = 'profile' | 'vehicle' | 'history' | null;
+
 export default function App() {
+  const { driver } = useAuthStore();
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  // Navegación de pantallas secundarias
+  const [drawerOpen, setDrawerOpen]     = useState(false);
+  const [modalScreen, setModalScreen]   = useState<ModalScreen>(null);
+
+  // Si no está autenticado, mostrar flujo de auth
+  if (!driver) {
+    return (
+      <>
+        <AuthLayout />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
+
   // ── Matching ──────────────────────────────────────────────────────────────
-  // Re-runs whenever status changes to/from 'searching'. The closure captures
-  // rejectedIds from the render that triggered the transition, which is always
-  // the up-to-date array because status changed as part of that same update.
   useEffect(() => {
     if (state.status !== 'searching') return;
     const rejectedIds = state.rejectedIds;
@@ -39,8 +59,6 @@ export default function App() {
   }, [state.status]);
 
   // ── Race-condition simulation ─────────────────────────────────────────────
-  // When the driver accepts a load, we enter 'validating' for 1.5s.
-  // 20% of the time another driver took it first.
   useEffect(() => {
     if (state.status !== 'validating') return;
 
@@ -67,17 +85,39 @@ export default function App() {
       ? state.load.origin
       : MOCK_DRIVER.currentCity;
 
-  // Show route on map whenever a load is selected (match or validating)
   const mapDestCity =
     state.status === 'match' || state.status === 'validating'
       ? state.load.destination
       : undefined;
 
+  // ── Modal screens (profile, vehicle, history) ─────────────────────────────
+  const modalScreenNode = modalScreen === 'profile' ? (
+    <ProfileScreen
+      onBack={() => setModalScreen(null)}
+      onNavigateVehicle={() => setModalScreen('vehicle')}
+    />
+  ) : modalScreen === 'vehicle' ? (
+    <VehicleScreen onBack={() => setModalScreen(null)} />
+  ) : modalScreen === 'history' ? (
+    <TripHistoryScreen onBack={() => setModalScreen(null)} />
+  ) : null;
+
   // ── Full-screen layouts (active / completed) ──────────────────────────────
   if (state.status === 'active') {
     return (
       <div className="h-screen w-full bg-slate-900 overflow-hidden">
-        <Header location={headerLocation} />
+        <Toaster position="top-center" richColors />
+        <Header
+          location={headerLocation}
+          onMenuOpen={() => setDrawerOpen(true)}
+          onProfileOpen={() => setModalScreen('profile')}
+        />
+        <SideDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onNavigate={(s) => setModalScreen(s)}
+        />
+        <AnimatePresence>{modalScreenNode}</AnimatePresence>
         <div className="h-[calc(100vh-64px)]">
           <ActiveTripScreen
             load={state.load}
@@ -91,6 +131,7 @@ export default function App() {
   if (state.status === 'completed') {
     return (
       <div className="h-screen w-full bg-slate-900 overflow-hidden">
+        <Toaster position="top-center" richColors />
         <CompletedScreen
           load={state.load}
           onNewSearch={() => dispatch({ type: 'SEARCH_AGAIN' })}
@@ -99,10 +140,26 @@ export default function App() {
     );
   }
 
-  // ── Map + bottom-sheet layout (idle / searching / match / validating / no_match)
+  // ── Map + bottom-sheet layout ─────────────────────────────────────────────
   return (
     <div className="h-screen w-full bg-slate-900 overflow-hidden">
-      <Header location={headerLocation} />
+      <Toaster position="top-center" richColors />
+
+      {/* Drawer lateral */}
+      <SideDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onNavigate={(s) => setModalScreen(s)}
+      />
+
+      {/* Pantallas secundarias (sobre todo lo demás) */}
+      <AnimatePresence>{modalScreenNode}</AnimatePresence>
+
+      <Header
+        location={headerLocation}
+        onMenuOpen={() => setDrawerOpen(true)}
+        onProfileOpen={() => setModalScreen('profile')}
+      />
 
       <div className="h-[calc(100vh-64px)] relative">
         <GoogleMapView
@@ -110,7 +167,6 @@ export default function App() {
           destCity={mapDestCity}
         />
 
-        {/* z-10 ensures this sits above Leaflet's isolated stacking context */}
         <div className="absolute inset-0 flex flex-col justify-end pointer-events-none z-10">
           <div className="pointer-events-auto">
             <AnimatePresence mode="wait">
@@ -118,6 +174,7 @@ export default function App() {
                 <IdleCard
                   key="idle"
                   onActivate={() => dispatch({ type: 'ACTIVATE_SEARCH' })}
+                  onRegisterVehicle={() => setModalScreen('vehicle')}
                 />
               )}
 
